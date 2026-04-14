@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="带伞吗">
+<meta name="theme-color" content="#0b0e17">
+<title>今天带伞吗？</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+:root {
+  --bg:#0b0e17; --bg2:#141929; --card:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.07); --text:#d4d8e8; --dim:rgba(255,255,255,0.35);
+  --accent:#5b8af5; --green:#34d399; --yellow:#fbbf24; --red:#f87171;
+  --rain-light:#60a5fa; --rain-mid:#f59e0b; --rain-heavy:#ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans SC',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+
+.container{max-width:420px;margin:0 auto;padding:16px 16px 80px}
+
+/* Header */
+.header{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.header h1{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+.header .sub{font-size:11px;color:var(--dim);margin-left:auto;text-align:right;line-height:1.4}
+
+/* GPS bar */
+.gps-bar{display:flex;gap:8px;margin-bottom:12px}
+.gps-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card);
+  color:var(--text);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s}
+.gps-btn:active{transform:scale(0.97);background:rgba(91,138,245,0.1)}
+.gps-btn svg{width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2}
+.coord-input-row{display:flex;gap:6px;margin-bottom:8px}
+.coord-input-row input{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--text);font-size:13px;outline:none}
+.coord-input-row input:focus{border-color:var(--accent)}
+.coord-input-row button{padding:10px 16px;border:none;border-radius:10px;
+  background:var(--accent);color:#fff;font-size:13px;font-weight:500;cursor:pointer}
+
+.status{font-size:11px;color:var(--dim);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.status .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:var(--green)}.dot-err{background:var(--red)}.dot-load{background:var(--yellow);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+
+/* Current weather */
+.current{display:flex;align-items:center;gap:16px;margin-bottom:4px}
+.cur-emoji{font-size:52px;line-height:1}
+.cur-info .temp{font-size:42px;font-weight:900;letter-spacing:-2px;line-height:1}
+.cur-info .desc{font-size:14px;color:var(--dim);margin-top:2px}
+.cur-details{display:flex;gap:16px;font-size:12px;color:var(--dim);margin-top:8px}
+
+/* Alert banner */
+.alert-banner{border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px}
+.alert-banner.rain{background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2)}
+.alert-banner.clear{background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.15)}
+.alert-banner.maybe{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.15)}
+.alert-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.alert-text{font-size:14px;font-weight:500;line-height:1.5}
+.alert-sub{font-size:12px;color:var(--dim);margin-top:4px;line-height:1.5}
+
+/* Minutely rain chart */
+.rain-chart-wrap{position:relative;height:80px;margin:8px 0;background:rgba(255,255,255,0.02);border-radius:10px;overflow:hidden}
+.rain-chart-wrap .bar{position:absolute;bottom:0;border-radius:3px 3px 0 0;transition:height .3s}
+.rain-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px}
+.rain-legend{font-size:10px;color:var(--dim);margin-top:6px;line-height:1.6}
+
+/* Hourly scroll */
+.hourly-scroll{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.hourly-scroll::-webkit-scrollbar{display:none}
+.hour-cell{flex-shrink:0;width:52px;text-align:center;padding:10px 4px;border-radius:12px;border:1px solid transparent;transition:all .2s}
+.hour-cell.rain-cell{background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.15)}
+.hour-label{font-size:11px;color:var(--dim);margin-bottom:6px}
+.hour-emoji{font-size:20px;margin-bottom:4px}
+.hour-temp{font-size:13px;font-weight:600}
+
+/* Stability indicators */
+.stability-row{display:flex;gap:2px;margin:8px 0 4px;align-items:flex-end;height:24px}
+.stab-bar{flex:1;border-radius:2px 2px 0 0;min-height:4px;transition:all .3s}
+.stab-bar.green{background:var(--green)}.stab-bar.yellow{background:var(--yellow)}.stab-bar.red{background:var(--red)}
+.stab-bar.empty{background:rgba(255,255,255,0.05)}
+.stability-legend{display:flex;gap:12px;font-size:10px;color:var(--dim);margin-bottom:4px;flex-wrap:wrap}
+.stability-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.leg-green::before{background:var(--green)}.leg-yellow::before{background:var(--yellow)}.leg-red::before{background:var(--red)}
+
+/* Dry window */
+.dry-window{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(52,211,153,0.06);
+  border:1px solid rgba(52,211,153,0.12);border-radius:12px;margin-bottom:12px}
+.dry-icon{font-size:20px}.dry-text{font-size:13px;line-height:1.5}
+.dry-text b{color:var(--green);font-weight:600}
+
+/* Clothing card */
+.cloth-card{border-radius:14px;padding:14px 16px;margin-bottom:12px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.12)}
+.cloth-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cloth-icon{font-size:24px}
+.cloth-title{font-size:14px;font-weight:600}
+.cloth-feel{font-size:12px;color:var(--dim)}
+.cloth-main{font-size:13px;line-height:1.7;margin-bottom:6px}
+.cloth-tags{display:flex;flex-wrap:wrap;gap:6px}
+.cloth-tag{font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(139,92,246,0.1);color:#c4b5fd}
+
+/* History info */
+.history-info{font-size:11px;color:var(--dim);text-align:center;padding:8px;line-height:1.6}
+
+/* Footer */
+.footer{text-align:center;font-size:10px;color:var(--dim);margin-top:20px;line-height:1.6}
+
+/* Loading */
+.loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 0}
+.spinner{width:28px;height:28px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--dim)}
+
+/* Error */
+.error-box{padding:14px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.15);border-radius:12px;font-size:13px;color:var(--red);margin-bottom:12px}
+
+.refresh-info{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--dim);margin-top:8px}
+.refresh-info svg{width:12px;height:12px;stroke:var(--dim);fill:none;stroke-width:2}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>☂️ 带伞吗</h1>
+    <div class="sub" id="refreshTime"></div>
+  </div>
+
+  <div class="gps-bar">
+    <button class="gps-btn" onclick="locateAndFetch()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+      <span>定位刷新</span>
+    </button>
+  </div>
+
+  <div class="coord-input-row">
+    <input type="text" id="coordInput" placeholder="经度,纬度（如 104.74,31.46）">
+    <button onclick="manualFetch()">查询</button>
+  </div>
+
+  <div class="status" id="statusBar"></div>
+
+  <div id="mainContent"></div>
+
+  <div class="footer">
+    数据来自彩云天气 · 1km分辨率 · 分钟级降雨预报<br>
+    多次查询自动对比 · 预报越稳定越可信
+  </div>
+</div>
+
+<script>
+const TOKEN = 'DpS87YWOT1lMMBPB';
+const HISTORY_KEY = 'wx_history';
+const COORDS_KEY = 'wx_coords';
+const MAX_HISTORY = 8; // keep last 8 queries for comparison
+const REFRESH_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// ===== Weather maps =====
+const SKYCON_EMOJI = {CLEAR_DAY:'☀️',CLEAR_NIGHT:'🌙',PARTLY_CLOUDY_DAY:'⛅',PARTLY_CLOUDY_NIGHT:'☁️',CLOUDY:'☁️',LIGHT_HAZE:'🌫️',MODERATE_HAZE:'🌫️',HEAVY_HAZE:'🌫️',LIGHT_RAIN:'🌧️',MODERATE_RAIN:'🌧️',HEAVY_RAIN:'🌧️',STORM_RAIN:'⛈️',FOG:'🌫️',LIGHT_SNOW:'❄️',MODERATE_SNOW:'❄️',HEAVY_SNOW:'❄️',STORM_SNOW:'❄️',DUST:'🌪️',SAND:'🌪️',WIND:'💨'};
+const SKYCON_CN = {CLEAR_DAY:'晴',CLEAR_NIGHT:'晴',PARTLY_CLOUDY_DAY:'多云',PARTLY_CLOUDY_NIGHT:'多云',CLOUDY:'阴',LIGHT_HAZE:'轻度雾霾',MODERATE_HAZE:'中度雾霾',HEAVY_HAZE:'重度雾霾',LIGHT_RAIN:'小雨',MODERATE_RAIN:'中雨',HEAVY_RAIN:'大雨',STORM_RAIN:'暴雨',FOG:'雾',LIGHT_SNOW:'小雪',MODERATE_SNOW:'中雪',HEAVY_SNOW:'大雪',STORM_SNOW:'暴雪',DUST:'浮尘',SAND:'沙尘',WIND:'大风'};
+function emoji(s){return SKYCON_EMOJI[s]||'🌤️'}
+function cnName(s){return SKYCON_CN[s]||'未知'}
+function isRain(s){return s && s.includes('RAIN')}
+function isSnow(s){return s && s.includes('SNOW')}
+function isPrecip(s){return isRain(s)||isSnow(s)}
+
+// ===== Clothing recommendation =====
+function getClothingAdvice(rt, hourly, todayHasRain){
+  const at = rt.apparent_temperature; // 体感温度
+  const temp = rt.temperature;        // 实际气温
+  const hum = rt.humidity * 100;      // 湿度%
+  const wind = rt.wind.speed;         // 风速km/h
+  const skycon = rt.skycon;
+  
+  // 基于体感温度的穿衣分级
+  let level, clothIcon, clothText, tags = [];
+  
+  if(at <= 0){
+    level = '严寒'; clothIcon = '🧣';
+    clothText = '羽绒服/厚棉服 + 毛衣 + 保暖内衣，围巾手套帽子都带上';
+    tags = ['羽绒服','厚毛衣','保暖内衣','围巾','手套','帽子'];
+  } else if(at <= 5){
+    level = '寒冷'; clothIcon = '🧥';
+    clothText = '厚外套/羽绒服 + 毛衣或卫衣，注意保暖';
+    tags = ['羽绒服/厚外套','毛衣','保暖内衣','围巾'];
+  } else if(at <= 10){
+    level = '偏冷'; clothIcon = '🧥';
+    clothText = '外套/夹克 + 薄毛衣或加绒卫衣';
+    tags = ['外套/夹克','薄毛衣','卫衣','长裤'];
+  } else if(at <= 15){
+    level = '微凉'; clothIcon = '🧤';
+    clothText = '薄外套/风衣 + 长袖，早晚温差注意加件外套';
+    tags = ['薄外套','长袖','长裤'];
+  } else if(at <= 20){
+    level = '舒适'; clothIcon = '👔';
+    clothText = '长袖/薄衬衫即可，可备一件薄外套';
+    tags = ['长袖','薄衬衫','薄外套备用'];
+  } else if(at <= 25){
+    level = '温暖'; clothIcon = '👕';
+    clothText = 'T恤/短袖，舒适透气的衣物';
+    tags = ['T恤','短袖','薄长裤'];
+  } else if(at <= 30){
+    level = '偏热'; clothIcon = '🩳';
+    clothText = '短袖短裤，注意防晒和补水';
+    tags = ['短袖','短裤','防晒'];
+  } else {
+    level = '炎热'; clothIcon = '🥵';
+    clothText = '尽量清凉着装，避免长时间户外暴晒';
+    tags = ['短袖','短裤','防晒霜','遮阳帽','多喝水'];
+  }
+  
+  // 额外修正
+  const extras = [];
+  
+  // 湿度修正
+  if(hum >= 80 && at > 15){
+    extras.push('湿度大，体感闷热，选透气面料');
+  } else if(hum >= 80 && at <= 15){
+    extras.push('湿度大，体感更冷，适当加衣');
+  } else if(hum <= 30){
+    extras.push('空气干燥，注意保湿');
+  }
+  
+  // 风速修正
+  if(wind >= 30){
+    extras.push('大风天气，穿防风外套');
+    if(!tags.includes('防风外套')) tags.push('防风外套');
+  } else if(wind >= 15 && at <= 15){
+    extras.push('风大体感更冷，多加一层');
+  }
+  
+  // 下雨修正
+  if(todayHasRain){
+    extras.push('有雨，建议穿防水鞋');
+    if(!tags.includes('防水鞋')) tags.push('防水鞋');
+  }
+  
+  // 温差修正（如果有逐小时数据）
+  if(hourly && hourly.temperature && hourly.temperature.length >= 12){
+    const temps = hourly.temperature.slice(0,24).map(t=>t.value);
+    const tMax = Math.max(...temps);
+    const tMin = Math.min(...temps);
+    const diff = tMax - tMin;
+    if(diff >= 10){
+      extras.push(`今日温差${diff.toFixed(0)}°，早晚注意加减衣`);
+    }
+  }
+  
+  // 紫外线（晴天高温）
+  if((skycon==='CLEAR_DAY'||skycon==='PARTLY_CLOUDY_DAY') && at > 20){
+    if(!tags.includes('防晒')) tags.push('防晒');
+  }
+  
+  // 雾霾
+  if(skycon.includes('HAZE')){
+    extras.push('雾霾天气，建议戴口罩');
+    tags.push('口罩');
+  }
+  
+  return { level, clothIcon, clothText, tags, extras, at, temp, hum, wind };
+}
+
+// ===== JSONP fetch =====
+function jsonp(url){
+  return new Promise((ok,fail)=>{
+    const cb='_cb_'+Math.random().toString(36).substr(2,8);
+    const timer=setTimeout(()=>{clean();fail(new Error('请求超时'))},15000);
+    function clean(){delete window[cb];const el=document.getElementById(cb);if(el)el.remove();clearTimeout(timer)}
+    window[cb]=function(d){clean();ok(d)};
+    const s=document.createElement('script');s.id=cb;
+    s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    s.onerror=()=>{clean();fail(new Error('网络错误'))};
+    document.head.appendChild(s);
+  });
+}
+
+// ===== Storage helpers =====
+function getHistory(){
+  try{return JSON.parse(localStorage.getItem(HISTORY_KEY))||[]}catch(e){return[]}
+}
+function saveHistory(h){
+  // trim to MAX_HISTORY, remove entries older than 12 hours
+  const cutoff = Date.now() - 12*60*60*1000;
+  h = h.filter(e => e.ts > cutoff).slice(-MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+}
+function getCachedCoords(){
+  try{return JSON.parse(localStorage.getItem(COORDS_KEY))}catch(e){return null}
+}
+function saveCachedCoords(lon,lat){
+  localStorage.setItem(COORDS_KEY, JSON.stringify({lon,lat,ts:Date.now()}));
+}
+
+// ===== Status & DOM =====
+function setStatus(type,msg){
+  const el=document.getElementById('statusBar');
+  const cls=type==='ok'?'dot-ok':type==='err'?'dot-err':'dot-load';
+  el.innerHTML=`<span class="dot ${cls}"></span>${msg}`;
+}
+function showLoading(){
+  document.getElementById('mainContent').innerHTML=`<div class="loading"><div class="spinner"></div><div class="loading-text">获取天气中...</div></div>`;
+}
+function showError(msg){
+  document.getElementById('mainContent').innerHTML=`<div class="error-box">${msg}</div>`;
+}
+
+// ===== Core fetch =====
+async function fetchWeather(lon, lat){
+  showLoading();
+  setStatus('load','正在查询...');
+  try{
+    const url=`https://api.caiyunapp.com/v2.6/${TOKEN}/${lon},${lat}/weather?alert=true&dailysteps=1&hourlysteps=24&minutely=true`;
+    const data = await jsonp(url);
+    if(data.status!=='ok'){throw new Error(data.status||'API返回错误')}
+    
+    // Save to history
+    const entry = {
+      ts: Date.now(),
+      hourly: extractHourlyPrecip(data.result),
+      minutely: data.result.minutely,
+      realtime: data.result.realtime,
+      daily: data.result.daily,
+      forecast_keypoint: data.result.forecast_keypoint
+    };
+    const history = getHistory();
+    history.push(entry);
+    saveHistory(history);
+    
+    renderWeather(data.result, getHistory());
+    setStatus('ok',`已更新 · ${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`);
+    document.getElementById('refreshTime').innerHTML=`上次刷新<br>${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`;
+  }catch(e){
+    setStatus('err','查询失败');
+    showError('获取天气失败：'+e.message+'<br>请检查网络连接后重试');
+  }
+}
+
+function extractHourlyPrecip(result){
+  // Extract skycon + precipitation per hour for stability comparison
+  if(!result.hourly||!result.hourly.skycon)return[];
+  return result.hourly.skycon.map((s,i)=>{
+    const precip = result.hourly.precipitation && result.hourly.precipitation[i];
+    return {
+      hour: new Date(s.datetime).getHours(),
+      date: new Date(s.datetime).toDateString(),
+      skycon: s.value,
+      precip: precip ? precip.value : 0
+    };
+  });
+}
+
+// ===== Stability analysis =====
+function analyzeStability(history){
+  // For each hour of today, count how many past queries predicted rain vs no rain
+  const today = new Date().toDateString();
+  const hourStats = {}; // hour -> {rain:0, clear:0, total:0}
+  
+  for(const entry of history){
+    if(!entry.hourly)continue;
+    for(const h of entry.hourly){
+      if(h.date !== today) continue;
+      if(!hourStats[h.hour]) hourStats[h.hour]={rain:0,clear:0,total:0};
+      hourStats[h.hour].total++;
+      if(isPrecip(h.skycon) || h.precip > 0.08){
+        hourStats[h.hour].rain++;
+      } else {
+        hourStats[h.hour].clear++;
+      }
+    }
+  }
+  return hourStats;
+}
+
+function getStabilityClass(stats){
+  // green = all agree no rain, red = all agree rain, yellow = conflicting
+  if(!stats || stats.total===0) return 'empty';
+  const rainRatio = stats.rain / stats.total;
+  if(stats.total === 1){
+    return rainRatio > 0 ? 'red' : 'green';
+  }
+  if(rainRatio === 0) return 'green';
+  if(rainRatio === 1) return 'red';
+  return 'yellow'; // conflicting predictions
+}
+
+function getStabilityLabel(cls){
+  if(cls==='green') return '稳定无雨';
+  if(cls==='red') return '稳定有雨';
+  if(cls==='yellow') return '预报不稳定';
+  return '';
+}
+
+// ===== Dry window finder =====
+function findDryWindows(hourlyData){
+  if(!hourlyData||!hourlyData.skycon)return[];
+  const now = new Date();
+  const windows = [];
+  let start = null;
+  
+  for(let i=0;i<Math.min(hourlyData.skycon.length,24);i++){
+    const s = hourlyData.skycon[i];
+    const d = new Date(s.datetime);
+    if(d < now && d.getHours() !== now.getHours()) continue; // skip past hours
+    
+    const dry = !isPrecip(s.value);
+    if(dry && start===null){
+      start = d.getHours();
+    } else if(!dry && start!==null){
+      windows.push({from:start, to:d.getHours()});
+      start = null;
+    }
+  }
+  if(start!==null){
+    // window extends to end of forecast
+    const last = hourlyData.skycon[Math.min(hourlyData.skycon.length-1,23)];
+    windows.push({from:start, to:new Date(last.datetime).getHours()+1});
+  }
+  return windows;
+}
+
+// ===== Render =====
+function renderWeather(result, history){
+  const rt = result.realtime;
+  const hourly = result.hourly;
+  const minutely = result.minutely;
+  const daily = result.daily;
+  const kp = result.forecast_keypoint;
+  const stability = analyzeStability(history);
+  const queryCount = history.length;
+  
+  let html = '';
+  
+  // ===== Current =====
+  html += `<div class="card">
+    <div class="current">
+      <div class="cur-emoji">${emoji(rt.skycon)}</div>
+      <div class="cur-info">
+        <div class="temp">${rt.temperature.toFixed(0)}°</div>
+        <div class="desc">${cnName(rt.skycon)}</div>
+      </div>
+    </div>
+    <div class="cur-details">
+      <span>体感 ${rt.apparent_temperature.toFixed(0)}°</span>
+      <span>湿度 ${(rt.humidity*100).toFixed(0)}%</span>
+      <span>风速 ${rt.wind.speed.toFixed(0)}km/h</span>
+    </div>
+  </div>`;
+  
+  // ===== Alert banner =====
+  const todayHasRain = hourly && hourly.skycon && hourly.skycon.some(s=>isPrecip(s.value));
+  const hasUnstable = Object.values(stability).some(s=>getStabilityClass(s)==='yellow');
+  
+  if(todayHasRain && hasUnstable){
+    html += `<div class="alert-banner maybe">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <div class="alert-text">预报有雨但不太稳定，建议带伞</div>
+        <div class="alert-sub">${kp||'部分时段降雨预测在多次查询间有变化'}</div>
+      </div>
+    </div>`;
+  } else if(todayHasRain){
+    html += `<div class="alert-banner rain">
+      <div class="alert-icon">☂️</div>
+      <div>
+        <div class="alert-text">今天有雨，记得带伞！</div>
+        <div class="alert-sub">${kp||''}</div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="alert-banner clear">
+      <div class="alert-icon">✅</div>
+      <div>
+        <div class="alert-text">今天无雨，放心出门</div>
+        <div class="alert-sub">${kp||''}</div>
+      </div>
+    </div>`;
+  }
+  
+  // ===== Clothing recommendation =====
+  const cloth = getClothingAdvice(rt, hourly, todayHasRain);
+  html += `<div class="cloth-card">
+    <div class="cloth-header">
+      <div class="cloth-icon">${cloth.clothIcon}</div>
+      <div>
+        <div class="cloth-title">穿衣建议 · ${cloth.level}</div>
+        <div class="cloth-feel">体感${cloth.at.toFixed(0)}°（气温${cloth.temp.toFixed(0)}° 湿度${cloth.hum.toFixed(0)}% 风${cloth.wind.toFixed(0)}km/h）</div>
+      </div>
+    </div>
+    <div class="cloth-main">${cloth.clothText}</div>
+    ${cloth.extras.length > 0 ? `<div class="cloth-main" style="color:var(--yellow);font-size:12px">${cloth.extras.join(' · ')}</div>` : ''}
+    <div class="cloth-tags">${cloth.tags.map(t=>`<span class="cloth-tag">${t}</span>`).join('')}</div>
+  </div>`;
+  
+  // ===== Dry windows =====
+  if(todayHasRain && hourly){
+    const windows = findDryWindows(hourly);
+    if(windows.length > 0){
+      const wText = windows.map(w=>`<b>${w.from}:00 - ${w.to}:00</b>`).join('、');
+      html += `<div class="dry-window">
+        <div class="dry-icon">🕐</div>
+        <div class="dry-text">无雨出门窗口：${wText}</div>
+      </div>`;
+    }
+  }
+  
+  // ===== Minutely rain chart =====
+  if(minutely && minutely.precipitation_2h && minutely.precipitation_2h.length > 0){
+    const precip = minutely.precipitation_2h;
+    const maxVal = Math.max(...precip, 0.3);
+    const barW = 100 / precip.length;
+    const now = new Date();
+    
+    html += `<div class="card">
+      <div class="card-title">🌧️ 未来2小时逐分钟降雨</div>
+      <div class="rain-chart-wrap">`;
+    
+    for(let i=0;i<precip.length;i++){
+      const v = precip[i];
+      const h = Math.max((v/maxVal)*100, v>0.01?4:0);
+      const color = v>=0.35?'var(--rain-heavy)':v>=0.1?'var(--rain-mid)':v>=0.01?'var(--rain-light)':'transparent';
+      html += `<div class="bar" style="left:${i*barW}%;width:${Math.max(barW-0.3,0.4)}%;height:${h}%;background:${color}"></div>`;
+    }
+    
+    html += `</div>
+      <div class="rain-labels">
+        <span>现在 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</span>
+        <span>+30min</span>
+        <span>+1h</span>
+        <span>+1.5h</span>
+        <span>+2h</span>
+      </div>`;
+    
+    if(precip.some(v=>v>0.01)){
+      html += `<div class="rain-legend"><span style="color:var(--rain-light)">■</span> 小雨 <span style="color:var(--rain-mid)">■</span> 中雨 <span style="color:var(--rain-heavy)">■</span> 大雨</div>`;
+    } else {
+      html += `<div class="rain-legend">🟢 未来2小时无降雨</div>`;
+    }
+    html += `<div style="font-size:11px;color:var(--dim);margin-top:4px">${minutely.description||''}</div>`;
+    html += `</div>`;
+  }
+  
+  // ===== Stability card =====
+  if(queryCount >= 2){
+    const nowHour = new Date().getHours();
+    html += `<div class="card">
+      <div class="card-title">📊 预报稳定性（基于${queryCount}次查询）</div>
+      <div class="stability-legend">
+        <span class="leg-green">一直无雨</span>
+        <span class="leg-yellow">预报反复</span>
+        <span class="leg-red">一直有雨</span>
+      </div>
+      <div class="stability-row">`;
+    
+    for(let h=nowHour;h<Math.min(nowHour+16,24);h++){
+      const stats = stability[h];
+      const cls = getStabilityClass(stats);
+      const height = cls==='empty'?'4px':'100%';
+      const title = stats ? `${h}时: ${stats.rain}/${stats.total}次预测有雨` : `${h}时: 无数据`;
+      html += `<div class="stab-bar ${cls}" style="height:${height}" title="${title}"></div>`;
+    }
+    
+    html += `</div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px">
+        <span>${nowHour}时</span>
+        <span>${Math.min(nowHour+8,23)}时</span>
+        <span>${Math.min(nowHour+15,23)}时</span>
+      </div>`;
+    
+    // Textual summary of unstable hours
+    const unstableHours = [];
+    for(let h=nowHour;h<24;h++){
+      if(getStabilityClass(stability[h])==='yellow'){
+        unstableHours.push(h+'时');
+      }
+    }
+    if(unstableHours.length > 0){
+      html += `<div style="font-size:11px;color:var(--yellow);margin-top:8px;line-height:1.5">
+        ⚠️ ${unstableHours.join('、')} 的预报在多次查询间有变化，建议这些时段带伞
+      </div>`;
+    }
+    
+    html += `</div>`;
+  } else {
+    html += `<div class="history-info">
+      💡 多次打开页面查看天气后，这里会显示预报稳定性分析<br>
+      （对比多次查询结果，判断降雨预报是否可信）
+    </div>`;
+  }
+  
+  // ===== Hourly forecast =====
+  if(hourly && hourly.skycon){
+    html += `<div class="card">
+      <div class="card-title">⏱️ 逐小时预报</div>
+      <div class="hourly-scroll">`;
+    
+    const len = Math.min(hourly.skycon.length, 24);
+    for(let i=0;i<len;i++){
+      const sk = hourly.skycon[i];
+      const temp = hourly.temperature[i];
+      const d = new Date(sk.datetime);
+      const hr = d.getHours();
+      const isP = isPrecip(sk.value);
+      const stabCls = getStabilityClass(stability[hr]);
+      
+      // Stability dot indicator
+      let stabDot = '';
+      if(queryCount >= 2 && stability[hr]){
+        const dotColor = stabCls==='green'?'var(--green)':stabCls==='yellow'?'var(--yellow)':'var(--red)';
+        stabDot = `<div style="width:4px;height:4px;border-radius:50%;background:${dotColor};margin:3px auto 0"></div>`;
+      }
+      
+      html += `<div class="hour-cell ${isP?'rain-cell':''}">
+        <div class="hour-label">${hr}时</div>
+        <div class="hour-emoji">${emoji(sk.value)}</div>
+        <div class="hour-temp">${temp.value.toFixed(0)}°</div>
+        ${stabDot}
+      </div>`;
+    }
+    
+    html += `</div></div>`;
+  }
+  
+  // ===== Auto refresh info =====
+  html += `<div class="refresh-info">
+    <svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+    页面保持打开时每2小时自动刷新 · 关闭再打开也会自动查询
+  </div>`;
+  
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+// ===== GPS locate =====
+function locateAndFetch(){
+  setStatus('load','正在定位...');
+  showLoading();
+  
+  if(!navigator.geolocation){
+    // Fallback: use cached coords
+    const cached = getCachedCoords();
+    if(cached){
+      setStatus('load','GPS不可用，使用上次位置');
+      fetchWeather(cached.lon, cached.lat);
+    } else {
+      setStatus('err','GPS不可用且无缓存位置');
+      showError('浏览器不支持定位，请手动输入坐标');
+    }
+    return;
+  }
+  
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const lon = pos.coords.longitude.toFixed(4);
+      const lat = pos.coords.latitude.toFixed(4);
+      saveCachedCoords(lon, lat);
+      setStatus('load',`定位成功 ${lon}, ${lat}`);
+      fetchWeather(lon, lat);
+    },
+    err=>{
+      // Fallback to cached
+      const cached = getCachedCoords();
+      if(cached){
+        setStatus('load','定位失败，使用上次位置');
+        fetchWeather(cached.lon, cached.lat);
+      } else {
+        setStatus('err','定位失败：'+err.message);
+        showError('定位失败且无缓存位置，请手动输入坐标<br>格式：经度,纬度（如 104.74,31.46）');
+      }
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:300000}
+  );
+}
+
+function manualFetch(){
+  const val = document.getElementById('coordInput').value.trim();
+  const parts = val.split(/[,，\s]+/);
+  if(parts.length!==2 || isNaN(parts[0]) || isNaN(parts[1])){
+    showError('坐标格式不对，请输入：经度,纬度（如 104.74,31.46）');
+    return;
+  }
+  const lon = parseFloat(parts[0]).toFixed(4);
+  const lat = parseFloat(parts[1]).toFixed(4);
+  saveCachedCoords(lon, lat);
+  fetchWeather(lon, lat);
+}
+
+// ===== Silent background refresh =====
+function silentRefresh(){
+  const cached = getCachedCoords();
+  if(cached){
+    fetchWeather(cached.lon, cached.lat);
+  }
+}
+
+// ===== Init =====
+function init(){
+  // Try GPS first, fallback to cached coords
+  const cached = getCachedCoords();
+  if(navigator.geolocation){
+    locateAndFetch();
+  } else if(cached){
+    fetchWeather(cached.lon, cached.lat);
+  } else {
+    setStatus('err','请点击定位或手动输入坐标');
+  }
+  
+  // Auto refresh every 2 hours
+  setInterval(silentRefresh, REFRESH_MS);
+}
+
+window.addEventListener('load', ()=> setTimeout(init, 300));
+
+// Also refresh when page becomes visible again (e.g. switching back from another tab/app)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    const cached = getCachedCoords();
+    if(cached){
+      // Only refresh if last fetch was > 30 min ago
+      const history = getHistory();
+      const lastTs = history.length > 0 ? history[history.length-1].ts : 0;
+      if(Date.now() - lastTs > 30*60*1000){
+        silentRefresh();
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
