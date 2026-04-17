@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="带伞吗">
+<meta name="theme-color" content="#0f172a">
+<title>今天带伞吗？</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://webapi.amap.com/maps?v=2.0&key=4cf3d2bfb05cb6ab56e5aeab2de4d1fe&plugin=AMap.Geolocation,AMap.CitySearch"></script>
+<style>
+:root {
+  --bg:#1a0f3d; --bg2:#2d1f5f; --bg3:#3d2879;
+  --text:#ede9fe; --dim:rgba(196,181,253,0.65); --accent:#a78bfa; --accent2:#c4b5fd;
+  --cta:#5eead4; --cta2:#34d399;
+  --card:rgba(61,40,121,0.35); --border:rgba(167,139,250,0.18);
+  --rain:#818cf8; --warn:#fbbf24; --danger:#f87171; --good:#4ade80;
+  --rain-light:#a5b4fc; --rain-mid:#fbbf24; --rain-heavy:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans SC',-apple-system,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;min-height:100dvh;overflow-x:hidden;padding:16px;padding-top:max(16px,env(safe-area-inset-top));
+  padding-bottom:max(20px,env(safe-area-inset-bottom));line-height:1.6;
+  background-image:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(167,139,250,0.22),transparent 60%),radial-gradient(ellipse 60% 40% at 100% 100%,rgba(94,234,212,0.06),transparent 60%),linear-gradient(180deg,var(--bg) 0%,#120828 100%);
+  background-attachment:fixed;}
+.container{max-width:520px;margin:0 auto;}
+.hero{text-align:center;margin-bottom:20px;padding-top:10px}
+.hero-icon{font-size:52px;line-height:1;margin-bottom:8px}
+.hero h1{font-size:26px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px}
+.hero .sub{font-size:12px;color:var(--dim);letter-spacing:1px}
+
+.btn-locate{width:100%;padding:14px;background:linear-gradient(135deg,var(--cta),var(--cta2));
+  color:#0f2e26;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 24px rgba(94,234,212,0.28);transition:transform 0.15s,box-shadow 0.15s;margin-bottom:10px}
+.btn-locate:active{transform:scale(0.98)}
+.btn-locate:disabled{opacity:0.6;cursor:not-allowed}
+
+.toggle-link{text-align:center;margin-bottom:12px}
+.toggle-link span{font-size:12px;color:var(--accent);cursor:pointer;border-bottom:1px dashed var(--accent)}
+
+#mapSection{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px}
+.map-tip{font-size:12px;color:var(--dim);margin-bottom:8px;text-align:center}
+.map-wrap{width:100%;height:200px;border-radius:10px;overflow:hidden;margin-bottom:10px}
+#amap{width:100%;height:100%}
+.coord-row{display:flex;gap:8px}
+.coord-row input{flex:1;padding:10px 12px;background:rgba(15,23,42,0.6);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-size:13px;font-family:inherit}
+.coord-row button{padding:10px 16px;background:var(--accent);color:#1a0f3d;border:none;border-radius:10px;
+  font-size:13px;font-weight:700;cursor:pointer}
+
+.status-msg{text-align:center;font-size:12px;color:var(--dim);min-height:18px;margin-bottom:12px}
+.status-msg.err{color:var(--danger)}
+.status-msg.ok{color:var(--good)}
+
+.alert-banner{background:linear-gradient(135deg,rgba(239,68,68,0.15),rgba(245,158,11,0.1));
+  border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none}
+.alert-banner .alert-t{font-size:14px;font-weight:700;color:#fca5a5;margin-bottom:4px}
+.alert-banner .alert-d{font-size:12px;color:var(--dim);line-height:1.5}
+
+/* Verdict */
+.verdict{border-radius:20px;padding:24px 20px;text-align:center;margin-bottom:14px;
+  position:relative;overflow:hidden}
+.verdict.rain{background:linear-gradient(135deg,#4c1d95,#5b21b6);border:1px solid rgba(167,139,250,0.35)}
+.verdict.safe{background:linear-gradient(135deg,#065f46,#047857);border:1px solid rgba(94,234,212,0.3)}
+.verdict-head{font-size:28px;font-weight:900;letter-spacing:-0.5px;margin-bottom:6px}
+.verdict-sub{font-size:13px;opacity:0.85;line-height:1.5}
+.verdict-meta{font-size:11px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.12);opacity:0.75}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;
+  backdrop-filter:blur(10px)}
+.card-title{font-size:13px;font-weight:700;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:6px;letter-spacing:0.5px}
+
+/* Minute rain */
+.rain-chart{position:relative;height:80px;background:rgba(15,23,42,0.4);border-radius:8px;overflow:hidden;margin-top:6px}
+.rain-bar{position:absolute;bottom:0;background:var(--rain-light);border-radius:1px;transition:height 0.3s}
+.rain-bar.moderate{background:var(--rain-mid)}
+.rain-bar.heavy{background:var(--rain-heavy)}
+.rain-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:6px;padding:0 2px}
+.rain-legend{font-size:11px;color:var(--dim);margin-top:6px;text-align:center}
+.rain-legend .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 2px 0 8px;vertical-align:middle}
+
+/* Realtime grid */
+.rt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.rt-cell{text-align:center;padding:8px 4px;background:rgba(15,23,42,0.4);border-radius:10px}
+.rt-cell .v{font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px}
+.rt-cell .l{font-size:10px;color:var(--dim);letter-spacing:0.5px}
+.rt-big{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rt-temp{font-size:44px;font-weight:900;line-height:1;letter-spacing:-2px}
+.rt-skycon{font-size:44px}
+.rt-desc{font-size:13px;color:var(--dim);margin-top:4px}
+
+/* Info row */
+.info-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.info-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+.info-tile .icon{font-size:20px;margin-bottom:4px}
+.info-tile .val{font-size:14px;font-weight:700;color:var(--text)}
+.info-tile .lbl{font-size:10px;color:var(--dim);margin-top:2px}
+
+/* Clothing */
+.cloth-text{font-size:13px;line-height:1.7}
+
+/* Hourly */
+.hourly{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.hourly::-webkit-scrollbar{display:none}
+.hour-cell{flex:0 0 54px;text-align:center;padding:8px 2px;background:rgba(15,23,42,0.4);border-radius:10px}
+.hour-cell.rain-cell{background:rgba(129,140,248,0.18);border:1px solid rgba(165,180,252,0.3)}
+.h-lbl{font-size:11px;color:var(--dim);margin-bottom:4px}
+.h-ico{font-size:20px;margin-bottom:2px}
+.h-t{font-size:13px;font-weight:600}
+.h-dot{width:5px;height:5px;border-radius:50%;margin:4px auto 0}
+
+/* Daily */
+.daily{display:flex;flex-direction:column;gap:6px}
+.daily-row{display:grid;grid-template-columns:48px 30px 1fr 70px;gap:8px;align-items:center;padding:6px 4px;font-size:13px}
+.d-day{color:var(--dim);font-size:12px}
+.d-ico{font-size:18px;text-align:center}
+.d-bar-wrap{position:relative;height:6px;background:rgba(148,163,184,0.15);border-radius:3px;overflow:hidden}
+.d-bar{position:absolute;top:0;height:100%;background:linear-gradient(90deg,#60a5fa,#fbbf24,#ef4444);border-radius:3px}
+.d-t{text-align:right;font-size:12px}
+.d-t .lo{color:var(--dim);margin-right:6px}
+
+/* Stability legend */
+.stab-legend{font-size:10px;color:var(--dim);margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);
+  display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.stab-legend .chip{display:inline-flex;align-items:center;gap:4px}
+.stab-legend .d{width:6px;height:6px;border-radius:50%}
+
+/* Dry window */
+.dry-window{background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05));
+  border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:10px 12px;margin-bottom:12px;
+  font-size:13px;display:flex;align-items:center;gap:8px}
+.dry-window .ic{font-size:18px}
+
+.refresh-info{text-align:center;font-size:10px;color:var(--dim);margin-top:16px;opacity:0.7;line-height:1.6}
+
+.fade{animation:fadeUp 0.4s ease-out both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hero fade">
+    <div class="hero-icon" id="heroIcon">🌤️</div>
+    <h1>今天带伞吗？</h1>
+    <div class="sub">精准定位 · 分钟级降雨 · 彩云天气</div>
+  </div>
+
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-t" id="alertTitle"></div>
+    <div class="alert-d" id="alertDesc"></div>
+  </div>
+
+  <button class="btn-locate" id="locBtn" onclick="tryAutoLocate()">📍 一键定位查天气</button>
+
+  <div id="mapSection">
+    <div class="map-tip">👆 在地图上点击你的位置</div>
+    <div class="map-wrap"><div id="amap"></div></div>
+    <div class="coord-row">
+      <input type="text" id="coordInput" placeholder="经度,纬度（如 104.07,30.67）">
+      <button onclick="manualCoord()">查询</button>
+    </div>
+  </div>
+  <div class="toggle-link"><span onclick="toggleMap()">📌 手动选点 / 输入坐标</span></div>
+
+  <div class="status-msg" id="statusMsg"></div>
+
+  <div id="weatherContent" style="display:none">
+    <div class="verdict" id="verdict"></div>
+    <div id="dryWindowBox"></div>
+
+    <div class="card fade" id="minuteCard" style="display:none">
+      <div class="card-title">⏱️ <span>未来2小时逐分钟降雨</span></div>
+      <div id="minuteDesc" style="font-size:12px;color:var(--dim);margin-bottom:4px"></div>
+      <div class="rain-chart" id="rainChart"></div>
+      <div class="rain-labels"><span>现在</span><span>30min</span><span>60min</span><span>90min</span><span>120min</span></div>
+      <div class="rain-legend" id="rainLegend"></div>
+    </div>
+
+    <div class="card fade">
+      <div class="card-title">🌡️ <span>实时天气</span></div>
+      <div class="rt-big">
+        <div>
+          <div class="rt-temp" id="rtTemp">--</div>
+          <div class="rt-desc" id="rtDesc"></div>
+        </div>
+        <div class="rt-skycon" id="rtSkycon">🌤️</div>
+      </div>
+      <div class="rt-grid" id="rtGrid"></div>
+    </div>
+
+    <div class="info-row fade" id="infoRow"></div>
+
+    <div class="card fade" id="clothCard">
+      <div class="card-title">👔 <span>穿衣建议</span></div>
+      <div class="cloth-text" id="clothText"></div>
+    </div>
+
+    <div class="card fade">
+      <div class="card-title">📊 <span>逐小时预报</span> <span style="font-size:10px;color:var(--dim);font-weight:400">· 底部圆点=预报稳定性</span></div>
+      <div class="hourly" id="hourly"></div>
+      <div class="stab-legend">
+        <span class="chip"><span class="d" style="background:var(--good)"></span>稳定无雨</span>
+        <span class="chip"><span class="d" style="background:var(--warn)"></span>预报反复</span>
+        <span class="chip"><span class="d" style="background:var(--danger)"></span>稳定有雨</span>
+      </div>
+    </div>
+
+    <div class="card fade">
+      <div class="card-title">📅 <span>未来5天</span></div>
+      <div class="daily" id="daily"></div>
+    </div>
+
+    <div class="refresh-info" id="refreshInfo"></div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const TOKEN = 'DpS87YWOT1lMMBPB';
+const COORD_KEY = 'wx_coord_v2';
+const HISTORY_KEY = 'wx_history_v2';
+const MAX_HISTORY = 12;           // keep last 12 query snapshots
+const HISTORY_EXPIRE_HR = 48;     // drop snapshots older than 48h
+const REFRESH_MS = 2 * 60 * 60 * 1000;  // auto-refresh every 2h
+const REFRESH_STALE_MIN = 30;     // auto-refresh on visibility if data older than 30min
+
+// ===== SKYCON MAPS =====
+const SK_EMOJI = {
+  CLEAR_DAY:'☀️',CLEAR_NIGHT:'🌙',PARTLY_CLOUDY_DAY:'⛅',PARTLY_CLOUDY_NIGHT:'☁️',CLOUDY:'☁️',
+  LIGHT_HAZE:'🌫️',MODERATE_HAZE:'🌫️',HEAVY_HAZE:'🌫️',FOG:'🌫️',DUST:'🌪️',SAND:'🌪️',WIND:'💨',
+  LIGHT_RAIN:'🌦️',MODERATE_RAIN:'🌧️',HEAVY_RAIN:'🌧️',STORM_RAIN:'⛈️',
+  LIGHT_SNOW:'🌨️',MODERATE_SNOW:'❄️',HEAVY_SNOW:'❄️',STORM_SNOW:'❄️',THUNDER_SHOWER:'⛈️'
+};
+const SK_CN = {
+  CLEAR_DAY:'晴',CLEAR_NIGHT:'晴',PARTLY_CLOUDY_DAY:'多云',PARTLY_CLOUDY_NIGHT:'多云',CLOUDY:'阴',
+  LIGHT_HAZE:'轻度雾霾',MODERATE_HAZE:'中度雾霾',HEAVY_HAZE:'重度雾霾',FOG:'雾',DUST:'浮尘',SAND:'沙尘',WIND:'大风',
+  LIGHT_RAIN:'小雨',MODERATE_RAIN:'中雨',HEAVY_RAIN:'大雨',STORM_RAIN:'暴雨',
+  LIGHT_SNOW:'小雪',MODERATE_SNOW:'中雪',HEAVY_SNOW:'大雪',STORM_SNOW:'暴雪',THUNDER_SHOWER:'雷阵雨'
+};
+const isRain = s => s && (s.includes('RAIN') || s.includes('THUNDER'));
+const isSnow = s => s && s.includes('SNOW');
+const emoji = s => SK_EMOJI[s] || '🌤️';
+const cn = s => SK_CN[s] || '未知';
+
+// ===== STORAGE =====
+function saveCoord(lng, lat) {
+  try { localStorage.setItem(COORD_KEY, JSON.stringify({ lng, lat, ts: Date.now() })); } catch(e){}
+}
+function getCoord() {
+  try { return JSON.parse(localStorage.getItem(COORD_KEY)); } catch(e) { return null; }
+}
+
+function getHistory() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+    const cutoff = Date.now() - HISTORY_EXPIRE_HR * 3600 * 1000;
+    return arr.filter(r => r.ts > cutoff);
+  } catch(e) { return []; }
+}
+const MIN_SNAPSHOT_INTERVAL_MIN = 20;  // don't save a new snapshot if last one is <20min old
+function saveHistorySnapshot(hourly) {
+  if (!hourly || !hourly.skycon) return;
+  try {
+    const arr = getHistory();
+    // Guard: skip if last snapshot is too recent (short-refresh protection)
+    if (arr.length > 0) {
+      const lastTs = arr[arr.length - 1].ts;
+      if (Date.now() - lastTs < MIN_SNAPSHOT_INTERVAL_MIN * 60 * 1000) {
+        return;  // same forecast data, don't pollute history
+      }
+    }
+    const hours = hourly.skycon.slice(0, 48).map((s, i) => ({
+      dt: s.datetime,
+      rain: isRain(s.value) || isSnow(s.value),
+      p: (hourly.precipitation && hourly.precipitation[i]) ? hourly.precipitation[i].value : 0
+    }));
+    arr.push({ ts: Date.now(), hours });
+    // Keep only the most recent MAX_HISTORY snapshots
+    const trimmed = arr.slice(-MAX_HISTORY);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  } catch(e) {}
+}
+// Returns stability for a given hour's datetime:
+//   { count, rainVotes, status: 'green' | 'yellow' | 'red' | null }
+// null means not enough data (< 2 snapshots)
+function getStability(datetime) {
+  const history = getHistory();
+  if (history.length < 2) return { count: history.length, rainVotes: 0, status: null };
+  const targetHour = new Date(datetime).getTime();
+  let count = 0, rainVotes = 0;
+  for (const rec of history) {
+    for (const h of rec.hours) {
+      if (Math.abs(new Date(h.dt).getTime() - targetHour) < 30 * 60 * 1000) {
+        count++;
+        if (h.rain) rainVotes++;
+        break;
+      }
+    }
+  }
+  if (count < 2) return { count, rainVotes, status: null };
+  const rainRatio = rainVotes / count;
+  let status;
+  if (rainRatio === 0) status = 'green';
+  else if (rainRatio === 1) status = 'red';
+  else status = 'yellow';
+  return { count, rainVotes, status };
+}
+
+// ===== JSONP =====
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = '_cb_' + Math.random().toString(36).slice(2, 10);
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('请求超时')); }, 15000);
+    function cleanup() {
+      delete window[cb];
+      const el = document.getElementById(cb);
+      if (el) el.remove();
+      clearTimeout(timeout);
+    }
+    window[cb] = (d) => { cleanup(); resolve(d); };
+    const s = document.createElement('script');
+    s.id = cb;
+    s.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
+    s.onerror = () => { cleanup(); reject(new Error('网络错误')); };
+    document.head.appendChild(s);
+  });
+}
+
+// ===== UI =====
+function setStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg || '';
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+function toggleMap() {
+  const s = document.getElementById('mapSection');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+  if (s.style.display === 'block') initMap();
+}
+
+// ===== MAP =====
+let map = null, marker = null;
+function initMap() {
+  if (map) return;
+  const saved = getCoord();
+  const center = saved ? [saved.lng, saved.lat] : [104.678, 31.465]; // default Mianyang
+  map = new AMap.Map('amap', { zoom: 13, center });
+  if (saved) setMarker(saved.lng, saved.lat);
+  map.on('click', e => {
+    const lng = e.lnglat.getLng(), lat = e.lnglat.getLat();
+    setMarker(lng, lat);
+    saveCoord(lng, lat);
+    fetchWeather(lng, lat);
+  });
+}
+function setMarker(lng, lat) {
+  if (marker) marker.setMap(null);
+  marker = new AMap.Marker({ position: [lng, lat], map });
+  map.setCenter([lng, lat]);
+}
+
+function manualCoord() {
+  const v = document.getElementById('coordInput').value.trim();
+  const m = v.match(/([\d.]+)[,，\s]+([\d.]+)/);
+  if (!m) { setStatus('坐标格式错误，示例：104.07,30.67', 'err'); return; }
+  const lng = parseFloat(m[1]), lat = parseFloat(m[2]);
+  saveCoord(lng, lat);
+  fetchWeather(lng, lat);
+}
+
+// ===== LOCATE =====
+function tryAutoLocate() {
+  const btn = document.getElementById('locBtn');
+  btn.disabled = true;
+  setStatus('正在定位...', '');
+
+  const geo = new AMap.Geolocation({
+    enableHighAccuracy: true, timeout: 12000, GeoLocationFirst: true, needAddress: false
+  });
+  geo.getCurrentPosition((status, result) => {
+    btn.disabled = false;
+    if (status === 'complete') {
+      const lng = result.position.lng, lat = result.position.lat;
+      saveCoord(lng, lat);
+      setStatus('定位成功', 'ok');
+      fetchWeather(lng, lat);
+    } else {
+      const saved = getCoord();
+      if (saved) {
+        setStatus('定位失败，使用上次位置', '');
+        fetchWeather(saved.lng, saved.lat);
+      } else {
+        setStatus('定位失败，请在下方地图选点', 'err');
+        document.getElementById('mapSection').style.display = 'block';
+        initMap();
+      }
+    }
+  });
+}
+
+// ===== FETCH =====
+let lastFetchTs = 0;
+async function fetchWeather(lng, lat) {
+  setStatus('加载天气数据...', '');
+  const url = `https://api.caiyunapp.com/v2.6/${TOKEN}/${lng.toFixed(4)},${lat.toFixed(4)}/weather?alert=true&dailysteps=5&hourlysteps=24`;
+  try {
+    const data = await jsonp(url);
+    if (data.status !== 'ok') throw new Error(data.error || 'API错误');
+    lastFetchTs = Date.now();
+    saveHistorySnapshot(data.result.hourly);
+    render(data.result);
+    setStatus(`更新于 ${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})} · ${lng.toFixed(3)}, ${lat.toFixed(3)}`, 'ok');
+  } catch (e) {
+    setStatus('加载失败：' + e.message, 'err');
+  }
+}
+
+function silentRefresh() {
+  const saved = getCoord();
+  if (saved) fetchWeather(saved.lng, saved.lat);
+}
+
+// ===== RENDER =====
+function render(result) {
+  const { realtime: rt, minutely, hourly: hr, daily, alert } = result;
+  document.getElementById('weatherContent').style.display = 'block';
+  document.getElementById('heroIcon').textContent = emoji(rt.skycon);
+
+  renderAlert(alert);
+  renderVerdict(rt, minutely, hr);
+  renderDryWindow(hr);
+  renderMinutely(minutely);
+  renderRealtime(rt);
+  renderInfo(rt, daily);
+  renderClothing(rt);
+  renderHourly(hr);
+  renderDaily(daily);
+  renderRefreshInfo();
+}
+
+function renderAlert(alert) {
+  const el = document.getElementById('alertBanner');
+  if (!alert || !alert.content || alert.content.length === 0) { el.style.display = 'none'; return; }
+  const a = alert.content[0];
+  document.getElementById('alertTitle').textContent = '⚠️ ' + a.title;
+  document.getElementById('alertDesc').textContent = a.description || '';
+  el.style.display = 'block';
+}
+
+function renderVerdict(rt, minutely, hr) {
+  const el = document.getElementById('verdict');
+  const now = isRain(rt.skycon) || isSnow(rt.skycon);
+  let minuteRain = false, minDesc = '';
+  if (minutely && minutely.precipitation_2h) minuteRain = minutely.precipitation_2h.some(v => v > 0.03);
+  if (minutely && minutely.description) minDesc = minutely.description;
+  let hourRain = false;
+  if (hr && hr.skycon) hourRain = hr.skycon.slice(0, 12).some(s => isRain(s.value) || isSnow(s.value));
+
+  // Stability-based boost: count history snapshots predicting rain in the next 12h
+  const history = getHistory();
+  let rainySnapshots = 0, totalSnapshots = history.length;
+  for (const rec of history) {
+    if (rec.hours.slice(0, 12).some(h => h.rain)) rainySnapshots++;
+  }
+  const willRain = now || minuteRain || hourRain;
+
+  let sub = minDesc || (willRain ? '今天有降雨风险，建议带伞' : '今天降雨概率很低，放心出门');
+  let meta = '';
+  if (totalSnapshots >= 2) {
+    const pct = Math.round(rainySnapshots / totalSnapshots * 100);
+    meta = `📊 基于最近 ${totalSnapshots} 次查询，${pct}% 显示未来12小时有雨`;
+  } else {
+    meta = `📊 再多查几次，将基于查询历史判断稳定性`;
+  }
+
+  if (willRain) {
+    el.className = 'verdict rain';
+    el.innerHTML = `<div class="verdict-head">🌂 带伞！</div><div class="verdict-sub">${sub}</div><div class="verdict-meta">${meta}</div>`;
+  } else {
+    el.className = 'verdict safe';
+    el.innerHTML = `<div class="verdict-head">😎 不用带伞</div><div class="verdict-sub">${sub}</div><div class="verdict-meta">${meta}</div>`;
+  }
+}
+
+function renderDryWindow(hr) {
+  const box = document.getElementById('dryWindowBox');
+  box.innerHTML = '';
+  if (!hr || !hr.skycon) return;
+  const next12 = hr.skycon.slice(0, 12);
+  const anyRain = next12.some(s => isRain(s.value) || isSnow(s.value));
+  if (!anyRain) return;
+  // Find longest consecutive dry run
+  let best = { start: -1, end: -1, len: 0 }, cur = { start: -1, len: 0 };
+  next12.forEach((s, i) => {
+    const isWet = isRain(s.value) || isSnow(s.value);
+    if (!isWet) {
+      if (cur.start < 0) cur.start = i;
+      cur.len++;
+      if (cur.len > best.len) best = { start: cur.start, end: i, len: cur.len };
+    } else {
+      cur = { start: -1, len: 0 };
+    }
+  });
+  if (best.len >= 2) {
+    const sh = new Date(next12[best.start].datetime).getHours();
+    const eh = new Date(next12[best.end].datetime).getHours();
+    box.innerHTML = `<div class="dry-window"><span class="ic">🚪</span><div><b>无雨出门窗口：${sh}:00 - ${eh + 1}:00</b><div style="font-size:11px;color:var(--dim);margin-top:2px">这段时间预计无雨，适合外出</div></div></div>`;
+  }
+}
+
+function renderMinutely(m) {
+  const card = document.getElementById('minuteCard');
+  if (!m || !m.precipitation_2h || m.precipitation_2h.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('minuteDesc').textContent = m.description || '';
+  const p = m.precipitation_2h;
+  const maxP = Math.max(...p, 0.5);
+  const chart = document.getElementById('rainChart');
+  const barW = 100 / p.length;
+  let html = '';
+  for (let i = 0; i < p.length; i++) {
+    const v = p[i];
+    let cls = '', h = 0;
+    if (v > 0.03) {
+      h = Math.max(6, (v / maxP) * 90);
+      cls = v > 0.25 ? 'heavy' : v > 0.1 ? 'moderate' : '';
+    }
+    if (h > 0) html += `<div class="rain-bar ${cls}" style="left:${i * barW}%;width:${Math.max(barW - 0.15, 0.4)}%;height:${h}%"></div>`;
+  }
+  chart.innerHTML = html;
+  const hasAny = p.some(v => v > 0.03);
+  document.getElementById('rainLegend').innerHTML = hasAny
+    ? '<span class="sw" style="background:var(--rain-light)"></span>小雨<span class="sw" style="background:var(--rain-mid)"></span>中雨<span class="sw" style="background:var(--rain-heavy)"></span>大雨'
+    : '🟢 未来2小时无降雨';
+}
+
+function renderRealtime(rt) {
+  document.getElementById('rtTemp').textContent = Math.round(rt.temperature) + '°';
+  document.getElementById('rtSkycon').textContent = emoji(rt.skycon);
+  let desc = cn(rt.skycon);
+  if (rt.air_quality && rt.air_quality.description) desc += ' · ' + rt.air_quality.description.chn;
+  document.getElementById('rtDesc').textContent = desc;
+  const grid = document.getElementById('rtGrid');
+  grid.innerHTML = `
+    <div class="rt-cell"><div class="v">${Math.round(rt.apparent_temperature)}°</div><div class="l">体感</div></div>
+    <div class="rt-cell"><div class="v">${Math.round(rt.humidity * 100)}%</div><div class="l">湿度</div></div>
+    <div class="rt-cell"><div class="v">${rt.wind.speed.toFixed(1)}</div><div class="l">风速 km/h</div></div>
+  `;
+}
+
+function renderInfo(rt, daily) {
+  const row = document.getElementById('infoRow');
+  const today = daily && daily.astro && daily.astro[0];
+  const sunrise = today ? today.sunrise.time : '--';
+  const sunset = today ? today.sunset.time : '--';
+  const uv = (daily && daily.life_index && daily.life_index.ultraviolet && daily.life_index.ultraviolet[0]) || null;
+  const aqi = rt.air_quality ? rt.air_quality.aqi.chn : null;
+  const aqiLvl = rt.air_quality && rt.air_quality.description ? rt.air_quality.description.chn : '';
+  row.innerHTML = `
+    <div class="info-tile"><div class="icon">🌅</div><div class="val">${sunrise}</div><div class="lbl">日出 · 日落 ${sunset}</div></div>
+    <div class="info-tile"><div class="icon">☀️</div><div class="val">${uv ? uv.index : '--'}</div><div class="lbl">紫外线 ${uv ? uv.desc : ''}</div></div>
+    <div class="info-tile"><div class="icon">🫁</div><div class="val">${aqi !== null ? aqi : '--'}</div><div class="lbl">AQI ${aqiLvl}</div></div>
+  `;
+}
+
+function renderClothing(rt) {
+  const t = rt.apparent_temperature;
+  let text = '';
+  if (t >= 30) text = '💦 高温天气，建议轻薄透气的短袖、短裤或裙子，注意防晒补水';
+  else if (t >= 25) text = '👕 短袖+薄长裤最舒服，体感偏热';
+  else if (t >= 20) text = '🧥 短袖或薄长袖，晚上可带件薄外套';
+  else if (t >= 15) text = '🧥 长袖+薄外套，早晚温差可能偏凉';
+  else if (t >= 10) text = '🧥 外套必备，可考虑卫衣+夹克';
+  else if (t >= 5) text = '🧣 保暖外套、毛衣，注意脖子和手';
+  else if (t >= 0) text = '🧥 厚外套、羽绒服，加围巾手套';
+  else text = '❄️ 寒冷，全套保暖装备：羽绒服、围巾、手套、保暖内衣';
+  if (isRain(rt.skycon)) text += '；正在下雨，记得带伞 ☂️';
+  document.getElementById('clothText').textContent = text;
+}
+
+function renderHourly(hr) {
+  const wrap = document.getElementById('hourly');
+  if (!hr || !hr.temperature) { wrap.innerHTML = ''; return; }
+  const len = Math.min(hr.temperature.length, 24);
+  let html = '';
+  for (let i = 0; i < len; i++) {
+    const t = hr.temperature[i], s = hr.skycon[i];
+    const d = new Date(t.datetime), h = d.getHours();
+    const isP = isRain(s.value) || isSnow(s.value);
+    const stab = getStability(t.datetime);
+    let dot = '';
+    if (stab.status) {
+      const color = stab.status === 'green' ? 'var(--good)' : stab.status === 'yellow' ? 'var(--warn)' : 'var(--danger)';
+      dot = `<div class="h-dot" style="background:${color}" title="基于${stab.count}次查询"></div>`;
+    } else {
+      dot = `<div class="h-dot" style="background:transparent"></div>`;
+    }
+    html += `<div class="hour-cell ${isP ? 'rain-cell' : ''}">
+      <div class="h-lbl">${i === 0 ? '现在' : h + '时'}</div>
+      <div class="h-ico">${emoji(s.value)}</div>
+      <div class="h-t">${Math.round(t.value)}°</div>
+      ${dot}
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function renderDaily(daily) {
+  const wrap = document.getElementById('daily');
+  if (!daily || !daily.temperature) { wrap.innerHTML = ''; return; }
+  const temps = daily.temperature;
+  const allMin = Math.min(...temps.map(t => t.min));
+  const allMax = Math.max(...temps.map(t => t.max));
+  const range = allMax - allMin || 1;
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  let html = '';
+  for (let i = 0; i < Math.min(5, temps.length); i++) {
+    const t = temps[i], s = daily.skycon[i];
+    const d = new Date(t.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((d - today) / 86400000);
+    const lbl = diff === 0 ? '今天' : diff === 1 ? '明天' : days[d.getDay()];
+    const left = ((t.min - allMin) / range) * 100;
+    const width = Math.max(8, ((t.max - t.min) / range) * 100);
+    html += `<div class="daily-row">
+      <div class="d-day">${lbl}</div>
+      <div class="d-ico">${emoji(s.value)}</div>
+      <div class="d-bar-wrap"><div class="d-bar" style="left:${left}%;width:${width}%"></div></div>
+      <div class="d-t"><span class="lo">${Math.round(t.min)}°</span>${Math.round(t.max)}°</div>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function renderRefreshInfo() {
+  const history = getHistory();
+  document.getElementById('refreshInfo').innerHTML = `
+    已缓存 ${history.length} 次查询历史 · 每 2 小时自动刷新 · 切回页面时自动检测<br>
+    坐标已保存到本地，下次打开直接用缓存位置
+  `;
+}
+
+// ===== INIT =====
+window.addEventListener('load', () => {
+  const saved = getCoord();
+  if (saved) {
+    setStatus('使用上次保存的位置...', '');
+    fetchWeather(saved.lng, saved.lat);
+  } else {
+    setStatus('首次使用，请点击"一键定位"或手动选点', '');
+  }
+  // Periodic silent refresh while tab is open
+  setInterval(silentRefresh, REFRESH_MS);
+});
+
+// Refresh on returning from background if stale
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && lastFetchTs > 0) {
+    if (Date.now() - lastFetchTs > REFRESH_STALE_MIN * 60 * 1000) silentRefresh();
+  }
+});
+</script>
+</body>
+</html>
